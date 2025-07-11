@@ -1,17 +1,16 @@
 import express from "express";
 import { Request, Response } from "express";
-
+import cors from "cors";
 
 const app = express();
+app.use(cors());
+app.use(express.json());
 
-interface CustomRequest extends Request {}
-interface CustomResponse extends Response {}
 
-app.get("/api", (req: CustomRequest, res: CustomResponse) => {       
+app.post("/api", async (req: Request, res: Response) => {    
 
-    res.json({
-        data: "Hi it working"
-    });
+    res.json({ data: "Hello World" });
 });
 
 export default app;
+
