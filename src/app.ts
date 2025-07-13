@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import cors from "cors";
 import errorHandler, { createError } from "./middlewares/error.middleware";
 import allApiRoutes from "./routes/index";
+import { uploadErrorHandler } from "./middlewares/uploader";
 
 // Create express server
 const app = express();
@@ -23,14 +24,12 @@ app.use(cors({
     },
     credentials: true,
 }));
-
 // Parse all coming reques to JSON
 app.use(express.json());
-
 // Main api base end point
 app.use("/api", allApiRoutes);
 app.get("/api", (req: Request, res: Response) => {
-    res.json({ data: "Hello World. Welcome to this api base end point"});
+    res.json({ data: "Hello World. Welcome to this api base end point" });
 });
 // Not found route
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -40,7 +39,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
         next(error);
     }
 });
-
+app.use(uploadErrorHandler);
 app.use(errorHandler);
 
 export default app;

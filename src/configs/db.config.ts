@@ -37,7 +37,6 @@ mongoose.connection.on("error", (err) => {
     console.error("❗ Mongoose connection error:", err.message);
     process.exit(1);
 });
-
 mongoose.connection.on("disconnected", () => {
     console.warn("⚠️  Mongoose disconnected, While Attempting to connect...");
 });

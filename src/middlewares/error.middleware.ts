@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 
-interface ErrorWithStatus extends Error {
+export interface ErrorWithStatus extends Error {
   statusCode?: number;
   response: {
     data: string
@@ -8,7 +8,7 @@ interface ErrorWithStatus extends Error {
 }
 
 // Global Error middleware
-const errorHandler = (err: ErrorWithStatus, req: Request, res: Response, next:NextFunction) => {
+const errorHandler = (err: ErrorWithStatus, req: Request, res: Response, next: NextFunction) => {
   const status = err.statusCode || 500;
   const message = err.message || "Something went wrong";
 
@@ -35,7 +35,7 @@ const errorHandler = (err: ErrorWithStatus, req: Request, res: Response, next:Ne
 };
 
 type catchAsyncProp = (req: Request, res: Response, next: NextFunction) => void
-type catchAsyncRV = (req: Request, res: Response, next: NextFunction)=> Promise<void>
+type catchAsyncRV = (req: Request, res: Response, next: NextFunction) => Promise<void>
 
 // Async error catcher
 export const catchAsync = (fn: catchAsyncProp): catchAsyncRV => {
@@ -60,6 +60,5 @@ export const createError = ({ statusCode = 500, message = "Internal Server Error
   const error = new customError(statusCode, message);
   return error;
 };
-
 
 export default errorHandler;
