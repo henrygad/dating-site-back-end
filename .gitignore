@@ -17,6 +17,8 @@ yarn-error.log*
 
 # VSCode settings
 .vscode/
-
+.yarn/
+yarn.lock
+.yarnrc.yml
 # TypeScript
 *.tsbuildinfo

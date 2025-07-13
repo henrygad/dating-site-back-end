@@ -14,6 +14,6 @@
     "skipLibCheck": true, //👈 Skips type-checking .d.ts files in node_modules
     "baseUrl": "." //👈 Makes imports relative to your project root.
   },
-  "include": ["src"], // 👈 Only compile files inside the src/ folder
+  "include": ["src", "index.ts"], // 👈 Only compile files inside the src/ folder
   "exclude": ["dist", "node_modules"]
 }

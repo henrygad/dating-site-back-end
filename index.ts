@@ -1,8 +1,8 @@
-import app from "./app";
-import wss from "./wss";
+import app from "./src/app";
+import wss from "./src/wss";
 import http from "http";
 import "dotenv/config";
-import connectDB from "./db";
+import connectDB from "./src/db";
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
