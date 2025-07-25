@@ -1,7 +1,7 @@
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 
-const wss = (server: http.Server, PORT: string) => {   
+const wss = (server: http.Server, SERVER_END_POINT: String) => {   
 
     const clients = new Map();
     
@@ -28,7 +28,7 @@ const wss = (server: http.Server, PORT: string) => {
         console.log("Hi just closed the WebSocket 2");
     });
 
-    console.log(`WebSocket running on wss://localhost:${PORT} end point`);
+    console.log(`WebSocket running on wss://${SERVER_END_POINT} end point`);
 };
 
 export default wss;

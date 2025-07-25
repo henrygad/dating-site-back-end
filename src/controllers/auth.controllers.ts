@@ -1,9 +1,8 @@
-import { NextFunction, Request, Response } from "express";
-import { catchAsync, createError } from "src/middlewares/error.middleware";
+import { catchAsyncErrorHandler, createCustomError } from "src/middlewares/error.middleware";
 
 
 // Local Register new user
-export const register = catchAsync(async (req: Request, res: Response, next: NextFunction) => {
+export const register = catchAsyncErrorHandler(async (err, req, res, next) => {
   const body = req.body; 
 
   res.status(200).json({ success: true, body });
