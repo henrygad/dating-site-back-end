@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { validationResult } from "express-validator";
 
-interface ErrorWithStatus extends Error {
+export interface ErrorWithStatus extends Error {
   statusCode?: number;
   response: {
     data: string

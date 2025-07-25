@@ -3,12 +3,11 @@ import wss from "./wss";
 import http from "http";
 import "dotenv/config";
 import connectDB from "./configs/db.config";
-
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
     try {
-        /// await connectDB();
+        await connectDB();
         const server = http
             .createServer(app)
             .listen(PORT, () => {
