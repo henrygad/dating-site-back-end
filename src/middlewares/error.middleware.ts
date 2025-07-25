@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { validationResult } from "express-validator";
 
 interface ErrorWithStatus extends Error {
   statusCode?: number;
@@ -8,7 +9,7 @@ interface ErrorWithStatus extends Error {
 }
 
 // Global Error middleware
-const errorHandler = (err: ErrorWithStatus, req: Request, res: Response, next:NextFunction) => {
+const errorHandler = (err: ErrorWithStatus, req: Request, res: Response, next: NextFunction) => {
   const status = err.statusCode || 500;
   const message = err.message || "Something went wrong";
 
@@ -35,7 +36,7 @@ const errorHandler = (err: ErrorWithStatus, req: Request, res: Response, next:Ne
 };
 
 type catchAsyncProp = (req: Request, res: Response, next: NextFunction) => void
-type catchAsyncRV = (req: Request, res: Response, next: NextFunction)=> Promise<void>
+type catchAsyncRV = (req: Request, res: Response, next: NextFunction) => Promise<void>
 
 // Async error catcher
 export const catchAsync = (fn: catchAsyncProp): catchAsyncRV => {
@@ -59,6 +60,16 @@ type createErrorProps = { statusCode: number, message: string }
 export const createError = ({ statusCode = 500, message = "Internal Server Error" }: createErrorProps): customError => {
   const error = new customError(statusCode, message);
   return error;
+};
+
+// Handle validation error
+export const validationError = (req: Request, res: Response, next: NextFunction) => {
+  const errors = validationResult(req);
+
+  if (!errors.isEmpty()) {
+    throw createError({ message: errors.array()[0].msg, statusCode: 400 });
+  }
+  next();
 };
 
 

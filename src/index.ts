@@ -12,7 +12,7 @@ const startServer = async () => {
         const server = http
             .createServer(app)
             .listen(PORT, () => {
-                console.log(`Server running on http://localhost:${PORT} end point`);
+                console.log(`Server running on http://localhost:${PORT}/api end point`);
                 wss(server, PORT as string);
             });
     } catch (err) {
