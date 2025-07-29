@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
-import { Chat } from "src/models/chat";
-import { Message } from "src/models/message";
-import { User } from "src/models/user";
+import { Chat } from "src/models/chat.model";
+import { Message } from "src/models/message.model.";
+import { User } from "src/models/user.model";
 // type that accounts for mongoDb default id
 export type WithId<T> = T & {
     _id: Types.ObjectId

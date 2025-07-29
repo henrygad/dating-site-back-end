@@ -9,8 +9,8 @@ export interface ErrorWithStatus extends Error {
   }
 }
 
-type catchAsyncProp = (err: ErrorWithStatus, req: Request, res: Response, next: NextFunction) => void
-type catchAsyncRV = (err: ErrorWithStatus, req: Request, res: Response, next: NextFunction) => Promise<void>
+type catchAsyncProp = (req: Request, res: Response, next: NextFunction) => void
+type catchAsyncRV = (req: Request, res: Response, next: NextFunction) => Promise<void>
 
 class customError extends Error {
   statusCode: number;
@@ -30,8 +30,8 @@ export const createCustomError = ({ statusCode = 500, message = "Internal Server
 
 // Async error catcher
 export const catchAsyncErrorHandler = (fn: catchAsyncProp): catchAsyncRV => {
-  return (err: ErrorWithStatus, req: Request, res: Response, next: NextFunction) =>
-    Promise.resolve(fn(err, req, res, next)).catch((err: ErrorWithStatus) => next(err));
+  return (req: Request, res: Response, next: NextFunction) =>
+    Promise.resolve(fn(req, res, next)).catch((err: ErrorWithStatus) => next(err));
 };
 
 // Validation error from express validator
