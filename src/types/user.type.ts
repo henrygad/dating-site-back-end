@@ -1,6 +1,5 @@
 // types/user.ts
 import { Types } from "mongoose";
-import { IUser } from "src/models/user.model";
 
 interface userTypes {
     _id: Types.ObjectId; // if you're using .populate() or saving to DB
@@ -38,9 +37,7 @@ interface userTypes {
     accountStatus: "active" | "disabled" | "banned" | string; // if you expect more options
     emailVerificationToken: string;
     emailVerificationTokenExpiringdate: number;
-    isValidPassword: (password: string)=> Promise<boolean>,
-    delete: ()=> Promise<IUser>,
-    saveChanges: ()=> Promise<IUser>,
+    isValidPassword: (password: string)=> Promise<boolean>,  
 }
 
 export default userTypes;

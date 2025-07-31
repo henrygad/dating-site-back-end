@@ -31,21 +31,21 @@ export const createCustomError = ({ statusCode = 500, message = "Internal Server
 // Async error catcher
 export const catchAsyncErrorHandler = (fn: catchAsyncProp): catchAsyncRV => {
   return (req: Request, res: Response, next: NextFunction) =>
-    Promise.resolve(fn(req, res, next)).catch((err: ErrorWithStatus) => next(err));
+    Promise.resolve(fn(req, res, next)).catch((err: ErrorWithStatus)=> next(err));
 };
 
 // Validation error from express validator
-export const expressValidatorErrorHandler = (req: Request, res: Response, next: NextFunction) => {
+export const expressValidatorErrorHandler = (req: Request, _res: Response, next: NextFunction) => {
   const errors = validationResult(req);
 
   if (!errors.isEmpty()) {
     throw createCustomError({ message: errors.array()[0].msg, statusCode: 400 });
   }
-  next(errors); // Move to the next handler
+  next(); // Move to the next handler
 };
 
 // Multer errors from uploading files
-export const multerErrorHandler = (err: ErrorWithStatus | MulterError, req: Request, res: Response, next: NextFunction) => {
+export const multerErrorHandler = (err: ErrorWithStatus | MulterError, _req: Request, _res: Response, next: NextFunction) => {
   if (err instanceof MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
       throw createCustomError({ message: "File too large. Max size is 5MB.", statusCode: 413 });
@@ -53,16 +53,7 @@ export const multerErrorHandler = (err: ErrorWithStatus | MulterError, req: Requ
     throw createCustomError({ message: `MulterError: ${err.message}`, statusCode: 400 });
   }
 
-  next(err); // Move to the next handler
-};
-
-// Route not found error
-export const routeNotFoundErrorHandler = (req: Request, res: Response, next: NextFunction) => {
-  try {
-    throw createCustomError({ statusCode: 404, message: "Route not found" });
-  } catch (error) {
-    next(error);
-  }
+  next(); // Move to the next handler
 };
 
 // Global Error middleware for sending out errors
@@ -70,15 +61,15 @@ const globalErrorHandler = (err: ErrorWithStatus, req: Request, res: Response, n
   const status = err.statusCode || 500;
   const message = err.message || "Something went wrong";
 
-  // console.error("💥 Error:", {
-  //   status,
-  //   message,
-  //   stack: process.env.NODE_ENV === "production" ? null : err.stack,
-  //   date: new Date().toISOString(),
-  //   targetUrl: req.originalUrl,
-  //   name: err.name,
-  //   ...(err.response?.data && { details: err.response.data }),
-  // });
+  /*  console.error("💥 Error:", {
+     status,
+     message,
+     stack: (err.stack),
+     date: new Date().toISOString(),
+     targetUrl: req.originalUrl,
+     name: err.name,
+     ...(err.response?.data && { details: err.response.data }),
+   }); */
 
   res.status(status).json({
     success: false,

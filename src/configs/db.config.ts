@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const connectDB = async () => {
     const mongoURI = process.env.MONGO_URI || "mongodb://localhost:27017/my-local-db";
 
+
     if (!mongoURI) {
         console.error("❌ Mongo URI is missing. Please set MONGO_URI in .env.");
         process.exit(1);
@@ -15,7 +16,6 @@ const connectDB = async () => {
         console.error("🚨 Failed to connect to MongoDB");
 
         if (error instanceof Error) {
-            console.error("🔍 Reason:", error.message);
             if ((error as any).name === "MongoNetworkError") {
                 console.error(
                     "🌐 Possible network error or MongoDB server is unreachable."
@@ -25,11 +25,14 @@ const connectDB = async () => {
             } else if ((error as any).name === "MongoServerError") {
                 console.error("💥 MongoDB server error:", error.message);
             }
+
+            console.error("🔍 Reason:", error.message);
         } else {
             console.error("🔍 Reason:", error);
         }
-
+        
         process.exit(1);
+
     }
 };
 

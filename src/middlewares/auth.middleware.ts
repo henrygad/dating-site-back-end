@@ -1,6 +1,6 @@
 // middleware/authMiddleware.ts
 import { Request } from "express";
-import jwt, { TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import User from "../models/user.model";
 import { catchAsyncErrorHandler, createCustomError } from "./error.middleware";
 
@@ -10,7 +10,7 @@ interface JwtPayload {
     id: string;
 }
 
-const verifyJWTToken = (req: Request): JwtPayload | undefined => {
+export const verifyJWTToken = (req: Request): JwtPayload | undefined => {
     const authHeader = req.headers.authorization;
     let decoded: JwtPayload | undefined = undefined;
 
@@ -23,20 +23,24 @@ const verifyJWTToken = (req: Request): JwtPayload | undefined => {
     try {
         const token = authHeader.split(" ")[1];
         decoded = jwt.verify(token, JWT_SECRET) as JwtPayload;
-    } catch (error) {
-        if (error instanceof TokenExpiredError) {
+    } catch (err) {
+        const error = err as { name: string };
+
+        if (error.name === "TokenExpiredError") {
             throw createCustomError({ statusCode: 401, message: "Unauthorized: Token has expired!" });
-        } else if (error instanceof JsonWebTokenError) {
+        } else if (error.name === "JsonWebTokenError") {
             throw createCustomError({ statusCode: 401, message: "Unauthorized: Invalid token" });
         }
-        throw createCustomError({ statusCode: 500, message: `Authentication failed: ${error}` });
+
+        throw createCustomError({ statusCode: 500, message: `Authentication failed: ${error}` });        
     }
 
     // Return jwt decoded value
     return decoded;
 };
 
-const protectRoute = catchAsyncErrorHandler(async (req, res, next) => {
+const protectRoute = catchAsyncErrorHandler(async (req, _res, next) => {
+   
     // Validate incoming jwt token
     const decoded = verifyJWTToken(req);
 
@@ -47,8 +51,7 @@ const protectRoute = catchAsyncErrorHandler(async (req, res, next) => {
     // Update req.user object
     req.user = user;
 
-    // Move to the next middleware
-    next(req.user);
+    next(); // Move to the next middlewar
 });
 
 export default protectRoute;

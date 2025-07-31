@@ -42,11 +42,10 @@ const userSchema = new Schema({
     emailVerificationTokenExpiringdate: Number,    
 });
 
-const User = model<IUser>("User", userSchema);
 
-// On document save to db, do
-userSchema.pre<IUser>("save", async function (next) {
-    // Hash and save password on the go 
+// On document save to db,
+userSchema.pre<IUser>("save", async function (next) {   
+    // 1) hash and save password on the fly 
     if (this.isModified("passwordHash")) {
         this.passwordHash = await bcrypt.hash(this.passwordHash, 12);
     };
@@ -54,28 +53,11 @@ userSchema.pre<IUser>("save", async function (next) {
     next();
 });
 
-// Create helpfull method to doc
-
-// 1) A method that save changes made on user data 
-userSchema.methods.saveChanges = async function () {
-    console.log(this, "from saveChanges");
-    const user = await User.findByIdAndUpdate(this._id, this, {
-        new: true,
-        runValidators: true,
-    });    
-    return user;
-};
-
-// 2) A method that delete user data 
-userSchema.methods.delete = async function () {    
-    const user = await User.findByIdAndDelete(this._id);    
-    return user;
-};
-
-// 3) A Method that compares req and res password
+// A Method that validate user password
 userSchema.methods.isValidPassword = async function (password: string) {
     const isMatch = await bcrypt.compare(password, this.passwordHash);
     return isMatch;
 };
+const User = model<IUser>("users", userSchema);
 
 export default User;

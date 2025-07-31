@@ -11,4 +11,4 @@ const chatSchema = new Schema({
 });
 //Chat type
 export type Chat = InferSchemaType<typeof chatSchema>;
-export default model("Chat", chatSchema);
+export default model("chats", chatSchema);

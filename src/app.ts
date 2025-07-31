@@ -1,8 +1,7 @@
-import express from "express";
-import { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
-import globalErrorHandler, { multerErrorHandler, routeNotFoundErrorHandler } from "./middlewares/error.middleware";
 import allApiRoutes from "./routes/index";
+import globalErrorHandler, { createCustomError} from "./middlewares/error.middleware";
 
 // Create express server
 const app = express();
@@ -29,18 +28,21 @@ app.use(express.json());
 
 // Main api base end point
 app.use("/api", allApiRoutes);
-app.get("/api", (req: Request, res: Response) => {
+app.get("/api", (_req: Request, res: Response) => {
     res.json({ data: "Hello World. Welcome to this api base end point" });
 });
 
-// File upload error
-app.use(multerErrorHandler);
-
 //  Route not found error
-app.use(routeNotFoundErrorHandler);
+app.use((_req, _res, next) => {
+try {
+    throw createCustomError({ statusCode: 404, message: "Route not found" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 // Send out all error
 app.use(globalErrorHandler);
 
 export default app;
-

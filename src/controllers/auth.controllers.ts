@@ -2,10 +2,11 @@ import { catchAsyncErrorHandler, createCustomError } from "src/middlewares/error
 import User from "src/models/user.model";
 import generateToken from "src/utils/generateToken";
 import { Request, Response } from "express";
+import { generateUsernameFromEmail } from "src/helper/generateUsernameFromEmail";
 
 // Local Register new user
 export const register = catchAsyncErrorHandler(async (req, res) => {
-  const { email, password, comfirmPassword } = req.body;
+  const { email, _password, confirmPassword } = req.body;
 
   let user = null;
 
@@ -14,16 +15,14 @@ export const register = catchAsyncErrorHandler(async (req, res) => {
   // Check if this is an existing user 
   if (user) throw createCustomError({ statusCode: 401, message: "There is an account with this email already. Please Try login with this email instead." });
 
-  // Comfirm both password match
-  if (password !== comfirmPassword) {
-    throw createCustomError({ statusCode: 401, message: "Comfirm password did not match!" });
-  }
-
-  // Generate an initail random username
-
 
   // Create new user
-  user = new User({ email, passwordHash: password });
+  user = new User({
+    email,
+    passwordHash: confirmPassword,
+    username: generateUsernameFromEmail(email)
+  });
+  // Save changes 
   user = await user.save();
   if (!user) throw createCustomError({ statusCode: 500, message: "Failed to create user" });
 
@@ -35,11 +34,11 @@ export const register = catchAsyncErrorHandler(async (req, res) => {
 
   // and save changes to db  
 
-  res.status(200).json({
+  res.json({
     success: true,
     message: "New user have be successfully create. User can now login with his/her login credentials",
     loginEndPoint: "/api/auth/login",
-    email: user.email
+    email: user.email,
   });
 });
 
@@ -53,33 +52,31 @@ export const localLogin = catchAsyncErrorHandler(async (req, res) => {
   });
 
   // If user does not exist either by username or email, then
-  if (!user) throw createCustomError({ statusCode: 401, message: "Username: Invalid credentials" });
+  if (!user) throw createCustomError({ statusCode: 401, message: "Identity: Invalid credentials" });
 
   // Compare incoming password with hashed password
   const isMatch = await user.isValidPassword(password);
   if (!isMatch) throw createCustomError({ statusCode: 401, message: "Password: Invalid credentials", });
 
-  // Update req.user object
-  req.user = user;
-
   // Generate a jwt user token
-  const token = generateToken(String(req.user._id));
+  const token = generateToken(String(user._id));
 
-  res.status(200).json({
+  res.json({
     success: true,
-    message: `Welcome back ${req.user.firstName || req.user.username || identity}. You've successfully login into your account`,
-    token,   
+    message: `Welcome back ${user.firstName || user.username || identity}. You've successfully login into your account`,
+    token,
   });
-  
+
 });
 
 // Logout
 export const logout = (req: Request, res: Response) => {
   // Remove the req.user property
   req.user = undefined;
-  res.status(200).json({
+  res.json({
     success: true,
     message: "You've successfully logout from your account!",
+    user: req.user
   });
 };
- 
+

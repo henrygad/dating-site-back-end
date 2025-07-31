@@ -10,4 +10,4 @@ const messageSchema = new Schema({
 }, { _id: false });
 //Message type
 export type Message = InferSchemaType<typeof messageSchema>;
-export default model("Message", messageSchema);
+export default model("messages", messageSchema);
