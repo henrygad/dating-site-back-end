@@ -1,14 +1,17 @@
-import mongoose, { InferSchemaType } from "mongoose";
-const { Schema, model, Types } = mongoose;
+import { HydratedDocument, model, Schema, Types } from "mongoose";
+import chatTypes from "src/types/chat.type";
 
+export type IChat = HydratedDocument<chatTypes>;
 
 const chatSchema = new Schema({
     participants: [
-        { type: Types.ObjectId, ref: "User" }
+        { type: Types.ObjectId, ref: "users" }
     ],
-    messages: [{ type: Types.ObjectId, ref: "Message" }],
+    messages: [{ type: Types.ObjectId, ref: "messages" }],
     lastMessageAt: Date
 });
-//Chat type
-export type Chat = InferSchemaType<typeof chatSchema>;
-export default model("chats", chatSchema);
+
+const Chat = model<IChat>("chats", chatSchema);
+export default Chat;
+
+

@@ -5,24 +5,19 @@ import cleanUserData from "src/utils/cleanUserData";
 
 // Get user
 export const getUser = catchAsyncErrorHandler(async (req, res) => {
-
-    if (!req.user) {
-        throw createCustomError({ statusCode: 401, message: "Unauthorized: user not login!" });
-    }
+    const user = req.user!;
 
     res.json({
         success: true,
         message: "Successfully fetched login user",
-        user: cleanUserData(req.user),
+        user: cleanUserData(user),
     });
 
 });
 
 // Update user data
 export const updateUser = catchAsyncErrorHandler(async (req, res) => {
-    if (!req.user) {
-        throw createCustomError({ statusCode: 401, message: "Unauthorized: user not login!" });
-    }
+    const user = req.user!;
 
     const {
         firstName,
@@ -31,12 +26,12 @@ export const updateUser = catchAsyncErrorHandler(async (req, res) => {
     } = req.body as userTypes;
 
     // Make changes 
-    req.user.firstName = firstName;
-    req.user.lastName = lastName;
-    req.user.profilePhotos = profilePhotos;
+    user.firstName = firstName;
+    user.lastName = lastName;
+    user.profilePhotos = profilePhotos;
 
     // Save updated to db
-    req.user = await req.user.save();
+    req.user = await user.save();
 
     res.json({
         success: true,
@@ -48,16 +43,14 @@ export const updateUser = catchAsyncErrorHandler(async (req, res) => {
 
 // Delete user data
 export const deleteUser = catchAsyncErrorHandler(async (req, res) => {
-    if (!req.user) {
-        throw createCustomError({ statusCode: 401, message: "Unauthorized: user not login!" });
-    }
+    const user = req.user!;
 
     // Delete user data from db
-    const result = await req.user.deleteOne({ _id: req.user._id });
+    const result = await user.deleteOne({ _id: user._id });
     if (!result) throw createCustomError({ statusCode: 400, message: "User account was not deleted!" });
 
     // Get user last infor
-    const name = req.user.firstName || req.user.username;
+    const name = user.firstName || user.username;
 
     // Logout user
     req.user = undefined;

@@ -1,4 +1,4 @@
-// types/user.ts
+
 import { Types } from "mongoose";
 
 interface userTypes {

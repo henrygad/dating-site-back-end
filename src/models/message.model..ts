@@ -1,13 +1,24 @@
-import mongoose, { InferSchemaType } from "mongoose";
-const { Schema, model, Types, } = mongoose;
+import { HydratedDocument, model, Schema, Types } from "mongoose";
+import messageType from "src/types/message.type";
+
+export type IMessage = HydratedDocument<messageType>
 
 const messageSchema = new Schema({
-    sender: { type: Types.ObjectId, ref: "User" },
-    text: String,
+    messageId: { type: String, unique: true },
+    chat: { type: Types.ObjectId, ref: "chats" },
+    sender: { type: Types.ObjectId, ref: "users" },
     type: String,
+    data: { type: String, data: String },
     sentAt: Date,
-    read: { type: Boolean, default: false }
-}, { _id: false });
-//Message type
-export type Message = InferSchemaType<typeof messageSchema>;
-export default model("messages", messageSchema);
+    edited: { type: Boolean, default: false },
+    sent: { type: Boolean, default: false },
+    seen: { type: Boolean, default: false },
+    read: { type: Boolean, default: false },
+    deleteType: String,
+    createdAt: Date,
+},
+    { _id: false }
+);
+
+const Message = model<IMessage>("messages", messageSchema);
+export default Message;

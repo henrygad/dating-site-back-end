@@ -26,9 +26,9 @@ const startServer = async () => {
             .createServer(app)
             .listen(PORT, process.env.NODE_ENV === "development" ? LAN_IP : undefined, () => {
 
-                const SERVER_END_POINT = `${process.env.NODE_ENV === "development" ? LAN_IP : "localhost"}:${PORT}/api`;
+                const SERVER_END_POINT = `${process.env.NODE_ENV === "development" ? LAN_IP : "localhost"}:${PORT}`;
 
-                console.log(`Server running on http://${SERVER_END_POINT} end point`);
+                console.log(`Server running on http${process.env.NODE === "production" ? "s" : ""}://${SERVER_END_POINT}/api end point`);
 
                 // Start websocket server
                 wss(server, SERVER_END_POINT);

@@ -42,7 +42,6 @@ const userSchema = new Schema({
     emailVerificationTokenExpiringdate: Number,    
 });
 
-
 // On document save to db,
 userSchema.pre<IUser>("save", async function (next) {   
     // 1) hash and save password on the fly 
@@ -58,6 +57,7 @@ userSchema.methods.isValidPassword = async function (password: string) {
     const isMatch = await bcrypt.compare(password, this.passwordHash);
     return isMatch;
 };
+
 const User = model<IUser>("users", userSchema);
 
 export default User;
