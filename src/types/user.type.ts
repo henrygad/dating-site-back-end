@@ -20,8 +20,8 @@ interface userTypes {
     profilePhotos: string[];
     createdAt: Date;
     lastLogin?: Date;
-    isVerified: boolean;
     isOnline: boolean;
+    lastPing: number,
     preferences: {
         ageRange: {
             min: number;
@@ -35,9 +35,16 @@ interface userTypes {
     blockedUsers: Types.ObjectId[];
     reportedUsers: Types.ObjectId[];
     accountStatus: "active" | "disabled" | "banned" | string; // if you expect more options
+    isVerified: boolean;
     emailVerificationToken: string;
     emailVerificationTokenExpiringdate: number;
     isValidPassword: (password: string)=> Promise<boolean>,  
+}
+
+export type wsUserType = {
+    _id: Types.ObjectId,
+    lastPing: number,
+    isOnline: boolean
 }
 
 export default userTypes;

@@ -1,59 +1,30 @@
 // User controllers
-import { catchAsyncErrorHandler, createCustomError } from "src/middlewares/error.middleware";
-import userTypes from "src/types/user.type";
-import cleanUserData from "src/utils/cleanUserData";
+import { catchAsyncErrorHandler } from "src/middlewares/error.middleware";
+import { readUser, removeUser, updatedUser } from "src/services/user.service";
+
 
 // Get user
 export const getUser = catchAsyncErrorHandler(async (req, res) => {
-    const user = req.user!;
-
     res.json({
         success: true,
         message: "Successfully fetched login user",
-        user: cleanUserData(user),
+        user: readUser(req),
     });
-
 });
 
 // Update user data
-export const updateUser = catchAsyncErrorHandler(async (req, res) => {
-    const user = req.user!;
-
-    const {
-        firstName,
-        lastName,
-        profilePhotos,
-    } = req.body as userTypes;
-
-    // Make changes 
-    user.firstName = firstName;
-    user.lastName = lastName;
-    user.profilePhotos = profilePhotos;
-
-    // Save updated to db
-    req.user = await user.save();
-
+export const patchUser = catchAsyncErrorHandler(async (req, res) => {
+    const user = await updatedUser(req);
     res.json({
         success: true,
         messsage: "Successfully updated profile!",
-        user: req.user
+        user: user
     });
 
 });
 
 // Delete user data
 export const deleteUser = catchAsyncErrorHandler(async (req, res) => {
-    const user = req.user!;
-
-    // Delete user data from db
-    const result = await user.deleteOne({ _id: user._id });
-    if (!result) throw createCustomError({ statusCode: 400, message: "User account was not deleted!" });
-
-    // Get user last infor
-    const name = user.firstName || user.username;
-
-    // Logout user
-    req.user = undefined;
-
+    const { name } = await removeUser(req);
     res.json({ success: true, message: `${name}, your account have been successfully delete. We are sad to see you go.` });
 });

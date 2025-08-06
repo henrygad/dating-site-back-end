@@ -21,10 +21,11 @@ const userSchema = new Schema({
     bio: String,
     interests: [String],
     profilePhotos: [String],
-    createdAt: { type: Date, default: Date.now },
+    createdAt: { type: Date, default: new Date() },
     lastLogin: Date,
     isVerified: { type: Boolean, default: false },
     isOnline: { type: Boolean, default: false },
+    lastPing: Number,
     preferences: {
         ageRange: {
             min: Number,

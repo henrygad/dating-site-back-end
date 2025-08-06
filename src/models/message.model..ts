@@ -4,20 +4,21 @@ import messageType from "src/types/message.type";
 export type IMessage = HydratedDocument<messageType>
 
 const messageSchema = new Schema({
-    messageId: { type: String, unique: true },
     chat: { type: Types.ObjectId, ref: "chats" },
-    sender: { type: Types.ObjectId, ref: "users" },
-    type: String,
-    data: { type: String, data: String },
-    sentAt: Date,
+    sender: { type: Types.ObjectId, ref: "users" },    
+    reciever: { type: Types.ObjectId, ref: "users" },    
+    text: String,
+    files: [{ type: String, url: String }],
+    emoji: String,
+    gif: String,
     edited: { type: Boolean, default: false },
     sent: { type: Boolean, default: false },
     seen: { type: Boolean, default: false },
     read: { type: Boolean, default: false },
-    deleteType: String,
+    deleteFromEveryone: { type: Boolean, default: false },
+    deleteFromMe: { type: Types.ObjectId, default: [], ref: "users" },
     createdAt: Date,
-},
-    { _id: false }
+}
 );
 
 const Message = model<IMessage>("messages", messageSchema);

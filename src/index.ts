@@ -2,7 +2,7 @@ import "dotenv/config";
 import app from "./app";
 import wss from "./wss";
 import http from "http";
-import getLocalIP from "./helper/getLocalIP";
+import getLocalIP from "./helper/getLocalIP.helper";
 import connectDB from "./configs/db.config";
 
 // Get local machine lan ip 

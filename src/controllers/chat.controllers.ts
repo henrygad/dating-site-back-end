@@ -1,23 +1,8 @@
-import { catchAsyncErrorHandler, createCustomError } from "src/middlewares/error.middleware";
-import Chat from "src/models/chat.model";
+import { catchAsyncErrorHandler} from "src/middlewares/error.middleware";
+import { createChat, readChat, removeChat, updateChat } from "src/services/chats.service";
 
 export const getChats = catchAsyncErrorHandler(async (req, res) => {
-    const user = req.user!;
-
-    const chats = await Chat.find({
-        participants: user._id
-    })
-        .sort({ lastMessageAt: -1 })
-        .populate({
-            path: "messages",
-            options: {
-                sort: { createdAt: -1 },
-                limit: 20
-            }
-        });
-
-    if (!chats.length) throw createCustomError({ statusCode: 404, message: "This user have no chat!" });
-
+    const chats = await readChat(req);
     res.json({
         success: true,
         message: "Sucessfully fetch user chats",
@@ -26,14 +11,8 @@ export const getChats = catchAsyncErrorHandler(async (req, res) => {
 
 });
 
-export const createChat = catchAsyncErrorHandler(async (req, res) => {
-    const user = req.user!;
-    const { friend } = req.body;
-
-    let chat = new Chat({ participants: [user._id, friend] });
-    chat = await chat.save();
-
-    if (!chat) throw createCustomError({ statusCode: 400, message: "Chat was not created!" });
+export const postChat = catchAsyncErrorHandler(async (req, res) => {
+    const chat = await createChat(req);
 
     res.json({
         success: true,
@@ -43,14 +22,8 @@ export const createChat = catchAsyncErrorHandler(async (req, res) => {
 
 });
 
-export const updateChat = catchAsyncErrorHandler(async (req, res) => {  
-    const { _id, friend } = req.body;
-
-    const chat = await Chat.findByIdAndUpdate(_id, {
-        $addToSet: { participants: friend }
-    });
-
-    if (!chat) throw createCustomError({ statusCode: 400, message: "Friend was not added to chat!" });
+export const patchChat = catchAsyncErrorHandler(async (req, res) => {
+    const chat = updateChat(req);
 
     res.json({
         success: true,
@@ -61,14 +34,7 @@ export const updateChat = catchAsyncErrorHandler(async (req, res) => {
 });
 
 export const deleteChat = catchAsyncErrorHandler(async (req, res) => {
-    const user = req.user!;
-    const { _id } = req.params;
-
-    const chat = await Chat.findByIdAndUpdate(_id, {
-        $pull: { participants: user._id }
-    });
-
-    if (!chat) throw createCustomError({ statusCode: 400, message: "User chat was not deleted!" });
+    const chat = await removeChat(req);
 
     res.json({
         success: true,
@@ -76,3 +42,4 @@ export const deleteChat = catchAsyncErrorHandler(async (req, res) => {
         chat,
     });
 });
+

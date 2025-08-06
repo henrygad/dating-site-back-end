@@ -1,4 +1,4 @@
-import uniqueString from "src/utils/uniqueString";
+import uniqueString from "src/utils/uniqueString.util";
 
 export function generateUsernameFromEmail(email: string): string {
     if (!email) return "";
