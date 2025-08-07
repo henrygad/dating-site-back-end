@@ -6,6 +6,7 @@ import userTypes from "src/types/user.type";
 const readUser = async (req: Request) => { 
     return cleanUserData(req.user!);
 };
+
 const updatedUser = async (req: Request) => { 
     const user = req.user!;
 
@@ -25,6 +26,7 @@ const updatedUser = async (req: Request) => {
 
     return cleanUserData(req.user);
 };
+
 const removeUser = async (req: Request) => { 
  const user = req.user!;
 
@@ -40,7 +42,6 @@ const removeUser = async (req: Request) => {
 
     return { name };
 };
-
 
 export {
     readUser,

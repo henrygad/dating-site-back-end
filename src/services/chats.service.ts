@@ -36,9 +36,10 @@ const readChat = async (req: Request) => {
 const updateChat = async (req: Request) => {
     const { _id, friend } = req.body;
 
-    const chat = await Chat.findByIdAndUpdate(_id, {
-        $addToSet: { participants: friend }
-    });
+    const chat = await Chat.findByIdAndUpdate(_id,
+        { $addToSet: { participants: friend } },
+        { new: true }
+    );
 
     if (!chat) throw createCustomError({ statusCode: 400, message: "Friend was not added to chat!" });
     return chat;
@@ -48,9 +49,10 @@ const removeChat = async (req: Request) => {
     const user = req.user!;
     const { _id } = req.params;
 
-    const chat = await Chat.findByIdAndUpdate(_id, {
-        $pull: { participants: user._id }
-    });
+    const chat = await Chat.findByIdAndUpdate(_id,
+        { $pull: { participants: user._id } },
+        { new: true }
+    );
 
     if (!chat) throw createCustomError({ statusCode: 400, message: "User chat was not deleted!" });
 

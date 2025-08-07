@@ -9,7 +9,6 @@ const localLoginUser = async (body: localLoginUserProps) => {
     
       // Find user by username or email
       const user = await User.findOne({
-
         $or: [{ username: identity }, { email: identity }],
       });
     

@@ -1,8 +1,8 @@
 import { Types } from "mongoose";
 
 interface messageType {
-    temp_id: string,
-    _id: Types.ObjectId;
+    _id?: Types.ObjectId;
+    temp_id?: string,
     sender: Types.ObjectId;
     reciever: Types.ObjectId;
     chat: Types.ObjectId;
