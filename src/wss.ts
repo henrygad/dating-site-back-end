@@ -1,7 +1,6 @@
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 import messageType, {
-    blockedMessageType,
     chatMessageType,
     pingPongMessageType,
     typingMessageType,
@@ -9,21 +8,23 @@ import messageType, {
 import {
     authenticateClient,
     exceedRateLimitSlidingWindow,
+    broadcast,
     handlePing,
     handlePong,
     handleWhenStopTyping,
     parseBody,
     respond,
     saveMessageToDB,
-    upadetClientOnlineStatInDB,
+    upadetClientOnlineStatsInDB,
     updateClientDataInMemory,
     updateDeleteFromMeMessageInDb,
     updateMessageInDb,
-    updateMessageStatInDb,
+    updateMessageStatsInDb,
 } from "./services/socket.service";
-import { wsUserType } from "./types/user.type";
+import { Types } from "mongoose";
+import { wsClientType } from "./types/user.type";
 
-const clients = new Map<WebSocket, wsUserType>();
+const clients = new Map<Types.ObjectId, wsClientType>();
 
 const wss = (server: http.Server, SERVER_END_POINT: string) => {
     const wss = new WebSocketServer({ server });
@@ -38,26 +39,31 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
         }
 
         // Store client in memory
-        const client = updateClientDataInMemory(ws, clients, {
-            _id: authClient._id,
+        const client = updateClientDataInMemory(authClient._id, clients, {
+            ws,
             lastPing: Date.now(),
             isOnline: true,
         });
 
         // Update client online stat in db
-        await upadetClientOnlineStatInDB(ws, client._id, {
-            isOnline: client.isOnline,
-            lastPing: client.lastPing,
-        });
+        await upadetClientOnlineStatsInDB(
+            authClient._id,
+            {
+                isOnline: client.isOnline,
+                lastPing: client.lastPing,
+            },
+            ws
+        );
 
         // Setup up ping to detect dead connections
-        const interval = handlePing(ws, clients);
+        const interval = handlePing(authClient._id, clients);
 
         // On message sent
         ws.on("message", (ms: Buffer) => {
-
             // Convert Json data to js
-            let data = parseBody<| pingPongMessageType | typingMessageType | blockedMessageType | chatMessageType>(ms);           
+            let data = parseBody<
+                pingPongMessageType | typingMessageType | chatMessageType
+            >(ms);
             if (!data) {
                 respond(ws, {
                     type: "error",
@@ -68,8 +74,11 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
             }
 
             // Limiting number of messages sent in 10s to 5 messages
-            const exceeded = exceedRateLimitSlidingWindow(client._id, { RATE_LIMIT_WINDOW: 10000, MESSAGE_LIMIT: 5 });
-            if ( exceeded) {
+            const exceeded = exceedRateLimitSlidingWindow(authClient._id, {
+                RATE_LIMIT_WINDOW: 10000,
+                MESSAGE_LIMIT: 5,
+            });
+            if (exceeded) {
                 respond(ws, {
                     type: "error",
                     sender: "server",
@@ -80,56 +89,60 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
 
             // Message handler
             switch (data.type) {
-
                 case "pong":
                     // Update client stat
-                    handlePong(ws, clients);
+                    handlePong(authClient._id, clients);
                     break;
 
                 case "typing":
                     // Notify chat room that this client is typing
+                    const { to, chat: chatId } = data.who_to_in;
 
-                    if (!data.who_and_where.chat) {
-                        return;
-                    }
-                    
-                    const typing_who_and_where = {
-                        user: authClient._id,
-                        chat: data.who_and_where.chat,
-                    };
+                    if (!to || !chatId) return;
 
-                    respond(ws, {
-                        type: "typing",
-                        sender: "server",
-                        who_and_where: typing_who_and_where,
-                    });
+                    broadcast(
+                        clients,
+                        { targetClients: [to] },
+                        {
+                            type: "typing",
+                            sender: "server",
+                            who_to_in: data.who_to_in,
+                        }
+                    );
 
                     // Send stop typing notification when user stop typing
-                    handleWhenStopTyping(ws, typing_who_and_where);
-                    break;
-
-                case "blocked" :
-                    // When client block his friend notify friend immidiately
-                    if (!data.who) {
-                        return;
-                    }
-
-                    respond(ws, {
-                        type: "recieve_blocked",
-                        sender: authClient._id,
-                        who: data.who,
+                    handleWhenStopTyping(() => {
+                        broadcast(
+                            clients,
+                            { targetClients: [to] },
+                            {
+                                type: "stop_typing",
+                                sender: "server",
+                                who_to_in: data.who_to_in,
+                            }
+                        );
                     });
                     break;
 
                 case "create_message":
                     // Create new message
-                    const {temp_id, reciever, chat, text, files, emoji, gif, createdAt } = data;
+                    const {
+                        temp_id,
+                        reciever,
+                        chat,
+                        text,
+                        files,
+                        emoji,
+                        gif,
+                        createdAt,
+                    } = data;
 
-                    if (!chat || !reciever.toString().trim()) {
+                    if (!chat || !reciever) {
                         respond(ws, {
                             type: "error",
                             sender: "server",
-                            message: "Invalid chat message sent: chat id and reciever is not found!",
+                            message:
+                                "Invalid chat message sent: chat id and reciever is not found!",
                         });
                         return;
                     }
@@ -152,7 +165,7 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                         createdAt: createdAt || new Date(),
                     };
 
-                    // Save message to db
+                    // Save message to db and broadcast
                     saveMessageToDB(createNewMessage, (message) => {
                         if (!message) {
                             respond(ws, {
@@ -163,11 +176,15 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                             return;
                         }
 
-                        respond(ws, {
-                            type: "recieve_message",
-                            temp_id,
-                            ...message,
-                        });
+                        broadcast(
+                            clients,
+                            { targetClients: [authClient._id, reciever] },
+                            {
+                                type: "recieve_message",
+                                temp_id,
+                                ...message,
+                            }
+                        );
                     });
 
                     break;
@@ -210,7 +227,11 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                                 return;
                             }
 
-                            respond(ws, { type: "recieve_message", ...message });
+                            broadcast(
+                                clients,
+                                { targetClients: [authClient._id, message.reciever] },
+                                { type: "recieve_message", ...message }
+                            );
                         }
                     );
 
@@ -247,7 +268,11 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                                 return;
                             }
 
-                            respond(ws, { type: "recieve_message", ...message });
+                            broadcast(
+                                clients,
+                                { targetClients: [message.reciever] },
+                                { type: "recieve_message", ...message }
+                            );
                         }
                     );
                     break;
@@ -278,8 +303,6 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                                 });
                                 return;
                             }
-
-                            respond(ws, { type: "recieve_message", ...message });
                         }
                     );
 
@@ -289,21 +312,22 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                     // Update message seen stat on reciever request
                     const { _id: messgae_stat_seen_id } = data;
 
-                    if(!messgae_stat_seen_id) {
+                    if (!messgae_stat_seen_id) {
                         respond(ws, {
                             type: "error",
                             sender: "server",
-                            message: "Invalid chat message sent: the message _id is not found!",
+                            message:
+                                "Invalid chat message sent: the message _id is not found!",
                         });
                         return;
                     }
 
                     // Update in db
-                    updateMessageStatInDb(
+                    updateMessageStatsInDb(
                         messgae_stat_seen_id,
                         { reciever: authClient?._id, seen: true },
                         (message) => {
-                            if(!message) {
+                            if (!message) {
                                 respond(ws, {
                                     type: "error",
                                     sender: "server",
@@ -312,8 +336,13 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                                 return;
                             }
 
-                            respond(ws, { type: "recieve_message", ...message });
-                         });                   
+                            broadcast(
+                                clients,
+                                { targetClients: [message.sender] },
+                                { type: "recieve_message", ...message }
+                            );
+                        }
+                    );
                     break;
 
                 case "read_message":
@@ -324,13 +353,14 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                         respond(ws, {
                             type: "error",
                             sender: "server",
-                            message: "Invalid chat message sent: the message _id is not found!",
+                            message:
+                                "Invalid chat message sent: the message _id is not found!",
                         });
                         return;
                     }
 
                     // Update in db
-                    updateMessageStatInDb(
+                    updateMessageStatsInDb(
                         messgae_stat_read_id,
                         { reciever: authClient?._id, read: true },
                         (message) => {
@@ -343,8 +373,13 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                                 return;
                             }
 
-                            respond(ws, { type: "recieve_message", ...message });
-                        });      
+                            broadcast(
+                                clients,
+                                { targetClients: [message.sender] },
+                                { type: "recieve_message", ...message }
+                            );
+                        }
+                    );
                     break;
 
                 default:
@@ -353,37 +388,40 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
                         sender: "server",
                         message: "Unknown message type!",
                     });
-
             }
         });
 
         // On client disconnect
         ws.on("close", () => {
-            const client = clients.get(ws);
+            const client = clients.get(authClient._id);
 
-            // Update client online stat 
+            // Update client online stat
             // and delete client from memory
             if (client) {
-                console.log("❎ Disconnected client", client._id);                
+                console.log("❎ Disconnected client", authClient._id);
 
                 // on Memory
-                updateClientDataInMemory(ws, clients, {
+                updateClientDataInMemory(authClient._id, clients, {
                     ...client,
                     isOnline: false,
                 });
 
-                // on db 
-                upadetClientOnlineStatInDB(ws, client._id, {
-                    isOnline: false,
-                    lastPing: client.lastPing,
-                });
+                // on db
+                upadetClientOnlineStatsInDB(
+                    authClient._id,
+                    {
+                        isOnline: false,
+                        lastPing: client.lastPing,
+                    },
+                    client.ws
+                );
 
                 // Delete client from memory
-                clients.delete(ws);
+                clients.delete(authClient._id);
             }
 
             // Stop ping checker
-            clearInterval(interval); 
+            clearInterval(interval);
         });
 
         // On ws server error

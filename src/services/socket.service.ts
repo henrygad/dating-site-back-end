@@ -1,5 +1,4 @@
 import messageType, {
-    blockedMessageType,
     chatMessageType,
     errorMessageType,
     pingPongMessageType,
@@ -9,10 +8,10 @@ import WebSocket from "ws";
 import http from "http";
 import verifyJWT from "src/helper/verifyJWT.helper";
 import { JwtPayload } from "jsonwebtoken";
-import { wsUserType } from "src/types/user.type";
 import { Types } from "mongoose";
 import Message, { IMessage } from "src/models/message.model.";
 import User from "src/models/user.model";
+import { wsClientType } from "src/types/user.type";
 
 const userMessageTimestamps = new Map<Types.ObjectId, number[]>();
 let timeout: NodeJS.Timeout;
@@ -47,33 +46,33 @@ export const authenticateClient = async (
 };
 
 export const updateClientDataInMemory = (
-    ws: WebSocket,
-    clients: Map<WebSocket, wsUserType>,
-    update: wsUserType
+    _id: Types.ObjectId,
+    clients: Map<Types.ObjectId, wsClientType>,
+    update: wsClientType
 ) => {
-    let client = clients.get(ws);
+    let client = clients.get(_id);
 
     // No Client found in memory
     if (!client) {
         // Store client in momory for the first time
-        clients.set(ws, update);
+        clients.set(_id, update);
     }
     // Client found
     else {
         // Update client data in momory
-        clients.set(ws, { ...client, ...update });
+        clients.set(_id, { ...client, ...update });
     }
 
     // Get the update client data
-    client = clients.get(ws);
+    client = clients.get(_id);
 
-    return client as wsUserType;
+    return client as wsClientType;
 };
 
-export const upadetClientOnlineStatInDB = async (
-    ws: WebSocket,
+export const upadetClientOnlineStatsInDB = async (
     _id: Types.ObjectId,
-    { lastPing, isOnline }: { lastPing: number; isOnline: boolean }
+    { lastPing, isOnline }: { lastPing: number; isOnline: boolean },
+    ws: WebSocket
 ) => {
     try {
         await User.findByIdAndUpdate(_id, {
@@ -105,13 +104,18 @@ export const updateMessageInDb = async (
     cb: (message: IMessage | null) => void
 ) => {
     const { sender, ...rest } = update;
-    const message = await Message.findOneAndUpdate(
-        { _id, sender },
-        { ...rest },
-        { new: true }
-    );
-    if (!message) return cb(null);
-    cb(message.toObject());
+    try {
+        const message = await Message.findOneAndUpdate(
+            { _id, sender },
+            { ...rest },
+            { new: true }
+        );
+        if (message) cb(message.toObject());
+
+    } catch {
+        cb(null);
+    }
+
 };
 
 export const updateDeleteFromMeMessageInDb = async (
@@ -119,35 +123,46 @@ export const updateDeleteFromMeMessageInDb = async (
     sender: Types.ObjectId,
     cb: (message: IMessage | null) => void
 ) => {
-    const message = await Message.findOneAndUpdate(
-        { _id, $or: [{ sender }, { reciever: sender }] },
-        { $addToSet: { deleteFromMe: sender } },
-        { new: true }
-    );
-    if (!message) return cb(null);
-    cb(message.toObject());
+    try {
+        const message = await Message.findOneAndUpdate(
+            { _id, $or: [{ sender }, { reciever: sender }] },
+            { $addToSet: { deleteFromMe: sender } },
+            { new: true }
+        );
+        if (message) cb(message.toObject());
+    } catch {
+        cb(null);
+    }
+
 };
 
-export const updateMessageStatInDb = async (
+export const updateMessageStatsInDb = async (
     _id: Types.ObjectId,
-    update: { reciever: Types.ObjectId, seen?: boolean, read?: boolean },
+    update: { reciever: Types.ObjectId; seen?: boolean; read?: boolean },
     cb: (message: IMessage | null) => void
 ) => {
     const { reciever, seen, read } = update;
 
-    let message = await Message.findOne({ _id, reciever });
-    if (!message) return cb(null);
+    try {
+        let message = await Message.findOne({ _id, reciever });
 
-    if (seen) {
-        message.seen = true;
+        if (message) {
+
+            if (seen) {
+                message.seen = true;
+            }
+            if (read) {
+                message.read = true;
+            }
+
+            message = await message.save();
+
+            cb(message.toObject());
+        }
+
+    } catch {
+        return cb(null);
     }
-    if (read) {
-        message.read = true;
-    }
-
-    message = await message.save();
-
-    cb(message.toObject());
 };
 
 export const respond = (
@@ -157,9 +172,28 @@ export const respond = (
         | typingMessageType
         | errorMessageType
         | chatMessageType
-        | blockedMessageType
 ) => {
     ws.send(JSON.stringify(data));
+};
+
+export const broadcast = (
+    clients: Map<Types.ObjectId, wsClientType>,
+    { targetClients }: { targetClients: Types.ObjectId[] },
+    message:
+        | pingPongMessageType
+        | typingMessageType
+        | errorMessageType
+        | chatMessageType
+) => {
+
+    // Broadcast to target client
+    targetClients.forEach(_id => {
+        const client = clients.get(_id);
+        if (client && client.ws.readyState === WebSocket.OPEN) {
+            client.ws.send(JSON.stringify(message));
+        }
+    });
+
 };
 
 export const parseBody = <T>(wsMessage: Buffer): T | null => {
@@ -171,11 +205,11 @@ export const parseBody = <T>(wsMessage: Buffer): T | null => {
 };
 
 export const handlePing = (
-    ws: WebSocket,
-    clients: Map<WebSocket, wsUserType>
+    _id: Types.ObjectId,
+    clients: Map<Types.ObjectId, wsClientType>
 ) => {
-    const interval = setInterval(() => {
-        const client = clients.get(ws);
+    const interval = setInterval(async () => {
+        const client = clients.get(_id);
 
         if (!client) return clearInterval(interval);
 
@@ -188,27 +222,31 @@ export const handlePing = (
             // Update client online stat
 
             // 1) on memory
-            updateClientDataInMemory(ws, clients, {
+            updateClientDataInMemory(_id, clients, {
                 ...client,
                 isOnline: false,
             });
 
             // 2) on db
-            upadetClientOnlineStatInDB(ws, client._id, {
-                isOnline: false,
-                lastPing: client.lastPing,
-            });
+            await upadetClientOnlineStatsInDB(
+                _id,
+                {
+                    isOnline: false,
+                    lastPing: client.lastPing,
+                },
+                client.ws
+            );
 
             // Kill client connection
-            clients.delete(ws);
-            ws.terminate();
+            clients.delete(_id);
+            client.ws.terminate();
 
             return clearInterval(interval);
         }
 
         // If user is active, send a ping
-        if (ws.readyState === ws.OPEN) {
-            respond(ws, {
+        if (client.ws.readyState === WebSocket.OPEN) {
+            respond(client.ws, {
                 type: "ping",
                 sender: "server",
             });
@@ -219,18 +257,25 @@ export const handlePing = (
 };
 
 export const handlePong = (
-    ws: WebSocket,
-    clients: Map<WebSocket, wsUserType>
+    _id: Types.ObjectId,
+    clients: Map<Types.ObjectId, wsClientType>
 ) => {
     // Client is still live, update lastPing
-    const client = clients.get(ws);
+    const client = clients.get(_id);
     if (client) {
-        updateClientDataInMemory(ws, clients, { ...client, lastPing: Date.now() });
+        updateClientDataInMemory(_id, clients, { ...client, lastPing: Date.now() });
     }
 };
 
+export const handleWhenStopTyping = (cb: () => void) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+        cb();
+    }, 5000);
+};
+
 export const exceedRateLimitSlidingWindow = (
-    userId: Types.ObjectId,
+    _id: Types.ObjectId,
     {
         RATE_LIMIT_WINDOW,
         MESSAGE_LIMIT,
@@ -239,7 +284,7 @@ export const exceedRateLimitSlidingWindow = (
     const now = Date.now();
 
     // Get user’s timestamps or initialize empty array
-    const timestamps = userMessageTimestamps.get(userId) || [];
+    const timestamps = userMessageTimestamps.get(_id) || [];
 
     // Filter out timestamps older than window
     const recentTimestamps = timestamps.filter(
@@ -255,7 +300,7 @@ export const exceedRateLimitSlidingWindow = (
     recentTimestamps.push(now);
 
     // Save updated timestamps
-    userMessageTimestamps.set(userId, recentTimestamps);
+    userMessageTimestamps.set(_id, recentTimestamps);
 
     return false;
 };
@@ -264,34 +309,16 @@ export const cleanUserMessageCounts = () => {
     // Periodically clean up old user message entries after 60s
     setInterval(() => {
         const now = Date.now();
-        for (const [userId, timestamps] of userMessageTimestamps.entries()) {
+        for (const [_id, timestamps] of userMessageTimestamps.entries()) {
             const recent = timestamps.filter((ts) => now - ts < 60000);
             if (recent.length > 0) {
-                userMessageTimestamps.set(userId, recent);
+                userMessageTimestamps.set(_id, recent);
             } else {
-                userMessageTimestamps.delete(userId);
+                userMessageTimestamps.delete(_id);
             }
         }
     }, 30000);
 };
-
-export const handleWhenStopTyping = (
-    ws: WebSocket,
-    who_and_where: { user: Types.ObjectId; chat: Types.ObjectId }
-) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-        respond(ws, {
-            type: "stop_typing",
-            sender: "server",
-            who_and_where,
-        });
-    }, 5000);
-};
-
-
-
-
 
 // function debounce(fn, delay) {
 //     let timeout;
@@ -316,17 +343,3 @@ export const handleWhenStopTyping = (
 //     };
 // }
 
-// for (const [client, data] of clients.entries()) {
-//     if (
-//         client.readyState === WebSocket.OPEN &&
-//         data.roomId === clientData.roomId
-//     ) {
-//         client.send(
-//             JSON.stringify({
-//                 type: "chat_message",
-//                 userId: clientData.userId,
-//                 content: message.content,
-//             })
-//         );
-//     }
-// }

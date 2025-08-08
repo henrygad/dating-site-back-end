@@ -1,5 +1,6 @@
 
 import { Types } from "mongoose";
+import WebSocket from "ws";
 
 interface userTypes {
     _id: Types.ObjectId; // if you're using .populate() or saving to DB
@@ -41,8 +42,8 @@ interface userTypes {
     isValidPassword: (password: string)=> Promise<boolean>,  
 }
 
-export type wsUserType = {
-    _id: Types.ObjectId,
+export type wsClientType = {
+    ws: WebSocket,
     lastPing: number,
     isOnline: boolean
 }

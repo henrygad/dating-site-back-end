@@ -24,19 +24,16 @@ export interface errorMessageType  {
     type: "error";
     message: string;
 }
+
 export interface pingPongMessageType  {
     sender:  string;    
     type: "ping"| "pong";
 }
+
 export interface typingMessageType  {
     sender: string;
     type: "typing" | "stop_typing";
-    who_and_where: { user: Types.ObjectId; chat: Types.ObjectId };
-}
-export interface blockedMessageType  {
-    sender: Types.ObjectId;
-    type: "blocked" | "recieve_blocked";
-    who:  Types.ObjectId;
+    who_to_in: { who: Types.ObjectId; to: Types.ObjectId, chat: Types.ObjectId };
 }
 
 export interface chatMessageType extends messageType {
@@ -51,5 +48,3 @@ export interface chatMessageType extends messageType {
 }
 
 export default messageType;
-
-
