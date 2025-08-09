@@ -30,13 +30,15 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
     const wss = new WebSocketServer({ server });
     console.log(`✅ WebSocket server running on ws://${SERVER_END_POINT}`);
 
-    wss.on("connection", async (ws: WebSocket, req) => {
+    wss.on("connection", async (ws: WebSocket, req) => {        
         // Authenticate client
         const authClient = await authenticateClient(ws, req);
         if (!authClient) {
             ws.close(1008, "Authentication faild!");
             return;
         }
+
+        console.log("Welcome" + " " + authClient.email);
 
         // Store client in memory
         const client = updateClientDataInMemory(authClient._id, clients, {
@@ -55,6 +57,8 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
             ws
         );
 
+        console.log(authClient.email + " " + " " + "you are now online");
+
         // Setup up ping to detect dead connections
         const interval = handlePing(authClient._id, clients);
 
@@ -64,6 +68,7 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
             let data = parseBody<
                 pingPongMessageType | typingMessageType | chatMessageType
             >(ms);
+
             if (!data) {
                 respond(ws, {
                     type: "error",
@@ -395,11 +400,8 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
         ws.on("close", () => {
             const client = clients.get(authClient._id);
 
-            // Update client online stat
-            // and delete client from memory
-            if (client) {
-                console.log("❎ Disconnected client", authClient._id);
-
+            // Update client online stat and delete client from memory
+            if (client) {         
                 // on Memory
                 updateClientDataInMemory(authClient._id, clients, {
                     ...client,
@@ -436,4 +438,9 @@ const wss = (server: http.Server, SERVER_END_POINT: string) => {
     });
 };
 
+
+
 export default wss;
+
+
+

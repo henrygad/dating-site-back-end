@@ -3,7 +3,7 @@ import cleanUserData from "src/helper/cleanUserData.helper";
 import { createCustomError } from "src/middlewares/error.middleware";
 import userTypes from "src/types/user.type";
 
-const readUser = async (req: Request) => { 
+const readUser = (req: Request) => {     
     return cleanUserData(req.user!);
 };
 
@@ -48,3 +48,4 @@ export {
     updatedUser,
     removeUser
 };
+

@@ -216,10 +216,8 @@ export const handlePing = (
         const timeSinceLastPing = Date.now() - client.lastPing;
 
         // If last ping was more than 30s ago, assume client is offline, then
-        if (timeSinceLastPing > 30000) {
-            console.log("⚠️ No ping from client, terminating...");
-
-            // Update client online stat
+        // update client online stat
+        if (timeSinceLastPing > 30000) {            
 
             // 1) on memory
             updateClientDataInMemory(_id, clients, {

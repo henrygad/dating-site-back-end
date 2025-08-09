@@ -4,11 +4,12 @@ import { readUser, removeUser, updatedUser } from "src/services/user.service";
 
 
 // Get user
-export const getUser = catchAsyncErrorHandler(async (req, res) => {
+export const getUser = catchAsyncErrorHandler((req, res) => {   
+    const user = readUser(req);    
     res.json({
         success: true,
         message: "Successfully fetched login user",
-        user: readUser(req),
+        user,
     });
 });
 
